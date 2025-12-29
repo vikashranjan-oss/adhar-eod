@@ -148,7 +148,11 @@ Ideal for:
 ---
 
 ## 📞 Support
-
+ UIDECMP@GMAIL.COM
+   NET AIT 
+   DEVLOPER CODE:- JAINI94
+   (JAIASHANKAR PRASAD NIRALA)
+   
 If you want to extend this system or need customization (dashboard, file upload, validation), you can build on top of this base architecture.
 
 ---
