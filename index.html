@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EOD Form</title>
+</head>
+<body>
+
+<h3>EOD Upload</h3>
+
+<select id="eod">
+  <option>1–5</option>
+  <option>6–10</option>
+  <option>11–15</option>
+  <option>16–20</option>
+  <option>21–25</option>
+  <option>26–End</option>
+</select><br><br>
+
+<input id="opid" placeholder="Operator ID" onblur="fetchData()" /><br><br>
+
+<input id="name" placeholder="Name" readonly />
+<input id="mode" placeholder="Mode" readonly />
+<input id="district" placeholder="District" readonly />
+<input id="address" placeholder="Address" readonly /><br><br>
+
+<input id="camp" placeholder="Camp Name" style="display:none;" /><br><br>
+
+<button onclick="submitEOD()">Submit</button>
+
+<script>
+const API = "YOUR_API_URL";
+
+function fetchData(){
+  fetch(API + "?operator_id=" + opid.value)
+  .then(r => r.json())
+  .then(d => {
+    if(d.error){ alert("Invalid Operator ID"); return; }
+    name.value = d.name;
+    mode.value = d.mode;
+    district.value = d.district;
+    address.value = d.address;
+    camp.style.display = (d.mode === "Camp") ? "block" : "none";
+  });
+}
+
+function submitEOD(){
+  fetch(API, {
+    method:"POST",
+    body:JSON.stringify({
+      eod_period:eod.value,
+      operator_id:opid.value,
+      name:name.value,
+      mode:mode.value,
+      district:district.value,
+      address:address.value,
+      camp_name:camp.value
+    })
+  })
+  .then(r=>r.text())
+  .then(msg=>alert(msg));
+}
+</script>
+
+</body>
+</html>
