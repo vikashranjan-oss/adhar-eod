@@ -34,7 +34,7 @@
 
     .container{
       width:100%;
-      max-width:920px;
+      max-width:980px;
       display:grid;
       grid-template-columns:380px 1fr;
       gap:28px;
@@ -108,7 +108,7 @@
       margin-bottom:6px;
     }
 
-    input[type="text"], select, input[type="tel"]{
+    input[type="text"], select, input[type="tel"], input[type="file"]{
       width:100%;
       padding:10px 12px;
       border-radius:10px;
@@ -187,6 +187,12 @@
       color:var(--muted);
     }
 
+    .ops-row {
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
     @media (max-width:880px){
       .container{ grid-template-columns: 1fr; padding:0 6px; }
     }
@@ -200,17 +206,17 @@
         <div class="logo-ico">AD</div>
         <div>
           <h1>EOD Form — ADHAR Operator</h1>
-          <p class="lead">Daily operator EOD upload. Use a valid Operator ID and submit the day's report.</p>
-          <p class="meta">Quick, mobile-friendly form — replace the API endpoint inside the script before publishing.</p>
+          <p class="lead">Daily operator EOD upload. Select operator from the list to auto-fill details.</p>
+          <p class="meta">Replace the API and Google Sheet config inside the script before publishing.</p>
         </div>
       </div>
 
       <div style="margin-top:10px;">
         <strong class="small">Tips</strong>
         <ul class="small" style="margin:8px 0 0 16px;padding:0 0 0 8px">
-          <li>Use an HTTPS endpoint and enable CORS on the server.</li>
-          <li>Operator ID is required to fetch registered details.</li>
-          <li>If mode is "Camp", the "Camp Name" field will appear.</li>
+          <li>Publish your Google Sheet (File → Share → Publish to web) or make it accessible publicly.</li>
+          <li>In the sheet include columns: operator_id, name, mode, district, address, camp_name (camp_name optional).</li>
+          <li>If mode is "Camp", the "Camp Name" field will appear automatically.</li>
         </ul>
       </div>
     </div>
@@ -220,9 +226,19 @@
 
       <form id="eodForm" autocomplete="off" onsubmit="event.preventDefault(); submitEOD();">
         <div>
-          <label for="opid">Operator ID</label>
-          <input id="opid" name="operator_id" type="text" inputmode="numeric" placeholder="Enter operator ID" required />
+          <label for="opSelect">Choose Operator</label>
+          <div class="ops-row">
+            <select id="opSelect" aria-label="Operator select" style="flex:1">
+              <option value="">Loading operators…</option>
+            </select>
+            <button type="button" id="reloadOps" title="Reload operators" style="padding:8px 10px">Reload</button>
+          </div>
           <div id="op-loading" class="helper" style="display:none;margin-top:6px">Looking up operator…</div>
+        </div>
+
+        <div>
+          <label for="opid">Operator ID (editable)</label>
+          <input id="opid" name="operator_id" type="text" inputmode="numeric" placeholder="Operator ID" required />
         </div>
 
         <div class="two">
@@ -251,7 +267,6 @@
           <label for="eod">EOD Period</label>
           <select id="eod" required>
             <option value="">Select period</option>
-            <option> ONE DAY </option>
             <option>1–5</option>
             <option>6–10</option>
             <option>11–15</option>
@@ -266,12 +281,18 @@
           <input id="camp" type="text" placeholder="Enter camp name if in Camp mode" />
         </div>
 
+        <div>
+          <label for="attachment">Optional attachment (photo/receipt)</label>
+          <input id="attachment" type="file" accept="image/*,application/pdf" />
+          <div class="helper" style="margin-top:6px">If you attach a file the form will be sent as multipart/form-data.</div>
+        </div>
+
         <div style="display:flex;gap:12px;align-items:center;margin-top:6px">
           <button id="submitBtn" type="submit" disabled>Submit EOD</button>
           <div id="statusText" class="helper" aria-live="polite"></div>
         </div>
 
-        <div class="small" style="margin-top:8px">Note: Replace <strong>const API = "YOUR_API_URL"</strong> in the script with your real HTTPS API and ensure CORS is enabled.</div>
+        <div class="small" style="margin-top:8px">Note: Replace <strong>const API = "YOUR_API_URL"</strong> and <strong>SHEET_ID</strong> in the script with your own values. Server must support CORS and optionally multipart/form-data if attachments are used.</div>
       </form>
     </div>
   </div>
@@ -279,10 +300,21 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-/* Replace with your public API endpoint (HTTPS) */
+/*
+  CONFIG - replace these:
+  - API: your endpoint that accepts POST for EOD. If you will send attachments, the server must accept multipart/form-data.
+  - SHEET_ID: the ID from your Google Sheet URL: https://docs.google.com/spreadsheets/d/<SHEET_ID>/edit
+  - SHEET_NAME: optional name of sheet/tab (if omitted will use default)
+  Requirements for Google Sheet: File → Share → Publish to web OR make sheet visible publicly.
+  Sheet columns (headers): operator_id, name, mode, district, address, camp_name (camp_name optional)
+*/
 const API = "YOUR_API_URL";
+const SHEET_ID = "YOUR_SHEET_ID";
+const SHEET_NAME = ""; // optional, e.g. "Sheet1"
 
 const qs = id => document.getElementById(id);
+const opSelect = qs('opSelect');
+const reloadOps = qs('reloadOps');
 const opid = qs('opid');
 const nameEl = qs('name');
 const modeEl = qs('mode');
@@ -295,8 +327,10 @@ const submitBtn = qs('submitBtn');
 const opLoading = qs('op-loading');
 const statusText = qs('statusText');
 const toast = qs('toast');
+const attachment = qs('attachment');
 
 let operatorFetched = false;
+let operatorsMap = {}; // operator_id -> {name, mode, district, address, camp_name}
 
 function showToast(msg, isError=false){
   toast.textContent = msg;
@@ -310,21 +344,146 @@ function setLoading(loading){
 }
 
 function validateFormState(){
-  // enable submit when operator data exists and eod selected
   submitBtn.disabled = !(operatorFetched && eod.value);
   statusText.textContent = submitBtn.disabled ? '' : 'Ready to submit';
 }
 
-opid.addEventListener('blur', fetchData);
-eod.addEventListener('change', validateFormState);
+opSelect.addEventListener('change', () => {
+  const val = opSelect.value;
+  if(!val) {
+    // clear but keep opid editable
+    operatorFetched = false;
+    clearFields();
+    validateFormState();
+    return;
+  }
+  // lookup from map
+  const data = operatorsMap[val];
+  if(data){
+    fillFieldsFromObject(data);
+    opid.value = val;
+    operatorFetched = true;
+    showToast('Operator selected');
+    validateFormState();
+  } else {
+    // fallback: set opid only
+    opid.value = val;
+    operatorFetched = false;
+    clearFields();
+    validateFormState();
+  }
+});
 
-function fetchData(){
+// if user types/changing opid manually, attempt to populate if available on blur
+opid.addEventListener('blur', () => {
   const id = (opid.value || '').trim();
-  if(!id){ operatorFetched=false; clearFields(); validateFormState(); return; }
-  if(!API || API === "YOUR_API_URL"){ showToast("Replace API URL in the script before using.", true); return; }
+  if(!id){ operatorFetched = false; clearFields(); validateFormState(); return; }
+  if(operatorsMap[id]){
+    fillFieldsFromObject(operatorsMap[id]);
+    operatorFetched = true;
+    // reflect selection in select if present
+    opSelect.value = id;
+    showToast('Operator matched from list');
+  } else {
+    // try to fetch single operator from API (existing behavior)
+    fetchOperatorFromAPIById(id);
+  }
+  validateFormState();
+});
 
+reloadOps.addEventListener('click', () => {
+  loadOperatorsFromSheet();
+});
+
+// Fetch operators from Google Sheets (using gviz JSON)
+function loadOperatorsFromSheet(){
+  if(!SHEET_ID || SHEET_ID === "YOUR_SHEET_ID"){
+    opSelect.innerHTML = '<option value="">Set SHEET_ID in script</option>';
+    showToast('Set SHEET_ID in the script', true);
+    return;
+  }
+  opSelect.innerHTML = '<option value="">Loading operators…</option>';
   setLoading(true);
-  operatorFetched = false;
+  operatorsMap = {};
+
+  const sheetParam = SHEET_NAME ? '&sheet=' + encodeURIComponent(SHEET_NAME) : '';
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json${sheetParam}`;
+
+  fetch(url)
+    .then(r => {
+      if(!r.ok) throw new Error('Failed to fetch sheet');
+      return r.text();
+    })
+    .then(text => {
+      // gviz returns some JS wrapper; extract JSON
+      const jsonText = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
+      const data = JSON.parse(jsonText);
+      const cols = data.table.cols.map(c => (c.label || '').toString().trim().toLowerCase());
+      const rows = data.table.rows || [];
+
+      // Build operatorsMap
+      rows.forEach(r => {
+        const cells = r.c || [];
+        const rowObj = {};
+        cols.forEach((colName, i) => {
+          const cell = cells[i];
+          rowObj[colName] = cell && typeof cell.v !== 'undefined' ? cell.v : '';
+        });
+        // Expect operator_id column
+        const opidVal = (rowObj['operator_id'] || rowObj['id'] || rowObj['operator'] || '').toString().trim();
+        if(opidVal){
+          operatorsMap[opidVal] = {
+            name: rowObj['name'] || '',
+            mode: rowObj['mode'] || '',
+            district: rowObj['district'] || '',
+            address: rowObj['address'] || '',
+            camp_name: rowObj['camp_name'] || rowObj['camp'] || ''
+          };
+        }
+      });
+
+      // populate select
+      const opts = ['<option value="">Select operator</option>'];
+      Object.keys(operatorsMap).sort().forEach(k => {
+        const o = operatorsMap[k];
+        const label = `${k} — ${o.name || 'Unnamed'}`;
+        opts.push(`<option value="${escapeHtml(k)}">${escapeHtml(label)}</option>`);
+      });
+      if(opts.length === 1) opts[0] = '<option value="">No operators found</option>';
+      opSelect.innerHTML = opts.join('');
+      setLoading(false);
+      showToast('Operators loaded');
+    })
+    .catch(err => {
+      console.error(err);
+      opSelect.innerHTML = '<option value="">Failed to load operators</option>';
+      setLoading(false);
+      showToast('Failed to load operators. Check SHEET_ID and publish settings.', true);
+    });
+}
+
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fillFieldsFromObject(data){
+  nameEl.value = data.name || '';
+  modeEl.value = data.mode || '';
+  districtEl.value = data.district || '';
+  addressEl.value = data.address || '';
+  if((data.mode || '').toLowerCase() === 'camp' || data.mode === 'Camp'){
+    campWrap.style.display = 'block';
+    campEl.value = data.camp_name || '';
+  } else {
+    campWrap.style.display = 'none';
+    campEl.value = '';
+  }
+}
+
+// original fallback: fetch operator data from API by id (if not in sheet)
+function fetchOperatorFromAPIById(id){
+  if(!API || API === "YOUR_API_URL") { showToast("Replace API URL in the script", true); return; }
+  setLoading(true);
   fetch(API + "?operator_id=" + encodeURIComponent(id))
     .then(r => {
       setLoading(false);
@@ -332,38 +491,35 @@ function fetchData(){
       return r.json();
     })
     .then(d => {
-      if(d.error){ showToast("Operator not found", true); clearFields(); return; }
-      nameEl.value = d.name || '';
-      modeEl.value = d.mode || '';
-      districtEl.value = d.district || '';
-      addressEl.value = d.address || '';
-      if((d.mode || '').toLowerCase() === 'camp' || d.mode === 'Camp') {
-        campWrap.style.display = 'block';
-      } else {
-        campWrap.style.display = 'none';
-        campEl.value = '';
-      }
+      if(d.error){ showToast("Operator not found", true); clearFields(); operatorFetched=false; return; }
+      fillFieldsFromObject({
+        name: d.name || '',
+        mode: d.mode || '',
+        district: d.district || '',
+        address: d.address || '',
+        camp_name: d.camp_name || d.camp || ''
+      });
       operatorFetched = true;
-      showToast("Operator loaded");
+      showToast('Operator loaded from API');
       validateFormState();
     })
     .catch(err => {
       setLoading(false);
       console.error(err);
-      showToast("Failed to fetch operator data. Check API and CORS.", true);
+      showToast("Failed to fetch operator data from API", true);
     });
 }
 
 function submitEOD(){
-  if(!operatorFetched){ showToast("Fetch an operator first", true); return; }
+  if(!operatorFetched){ showToast("Select or fetch an operator first", true); return; }
   if(!eod.value){ showToast("Select EOD period", true); return; }
-  if(!API || API === "YOUR_API_URL"){ showToast("Replace API URL in the script before using.", true); return; }
+  if(!API || API === "YOUR_API_URL"){ showToast("Replace API URL in the script", true); return; }
 
   submitBtn.disabled = true;
   submitBtn.textContent = 'Submitting…';
   statusText.textContent = '';
 
-  const payload = {
+  const payloadObj = {
     eod_period: eod.value,
     operator_id: opid.value.trim(),
     name: nameEl.value,
@@ -373,29 +529,57 @@ function submitEOD(){
     camp_name: (campEl.value || '').trim()
   };
 
-  fetch(API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-  .then(r => {
-    if(!r.ok) return r.text().then(t => Promise.reject(t || r.statusText));
-    return r.text();
-  })
-  .then(msg => {
-    showToast(msg || "Submitted successfully");
-    // keep fields, but reset eod
-    eod.value = '';
-    validateFormState();
-  })
-  .catch(err => {
-    console.error(err);
-    showToast("Failed to submit. Check API, network and CORS.", true);
-  })
-  .finally(()=>{
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Submit EOD';
-  });
+  const file = attachment.files && attachment.files[0];
+  if(file){
+    // send as multipart/form-data
+    const fd = new FormData();
+    Object.keys(payloadObj).forEach(k => fd.append(k, payloadObj[k]));
+    fd.append('attachment', file, file.name);
+
+    fetch(API, { method: 'POST', body: fd })
+      .then(r => {
+        if(!r.ok) return r.text().then(t => Promise.reject(t || r.statusText));
+        return r.text();
+      })
+      .then(msg => {
+        showToast(msg || 'Submitted successfully');
+        eod.value = '';
+        attachment.value = '';
+        validateFormState();
+      })
+      .catch(err => {
+        console.error(err);
+        showToast('Failed to submit. Check API and CORS.', true);
+      })
+      .finally(() => {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submit EOD';
+      });
+  } else {
+    // send JSON
+    fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payloadObj)
+    })
+    .then(r => {
+      if(!r.ok) return r.text().then(t => Promise.reject(t || r.statusText));
+      return r.text();
+    })
+    .then(msg => {
+      showToast(msg || "Submitted successfully");
+      eod.value = '';
+      validateFormState();
+    })
+    .catch(err => {
+      console.error(err);
+      showToast("Failed to submit. Check API and CORS.", true);
+    })
+    .finally(()=>{
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submit EOD';
+    });
+  }
 }
 
 function clearFields(){
@@ -406,6 +590,15 @@ function clearFields(){
   campEl.value = '';
   campWrap.style.display = 'none';
 }
+
+// initialize
+(function init(){
+  // load operators from sheet on start
+  loadOperatorsFromSheet();
+
+  // if user picks an operator in select, blur on opid should not overwrite
+  eod.addEventListener('change', validateFormState);
+})();
 </script>
 
 </body>
