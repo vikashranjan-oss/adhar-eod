@@ -1,64 +1,410 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>EOD Form</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EOD Form — ADHAR Operator</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --accent:#0f62fe;
+      --muted:#6b7280;
+      --success:#16a34a;
+      --danger:#dc2626;
+      --shadow: 0 6px 18px rgba(16,24,40,0.08);
+      --radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background: linear-gradient(180deg,#f7fbff 0%,var(--bg) 100%);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+      color:#0f172a;
+    }
+
+    .container{
+      width:100%;
+      max-width:920px;
+      display:grid;
+      grid-template-columns:380px 1fr;
+      gap:28px;
+      align-items:start;
+    }
+
+    .brand {
+      background: linear-gradient(135deg,#eef2ff 0%,#fff 100%);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      align-items:flex-start;
+    }
+
+    .brand .logo {
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .logo-ico{
+      background:linear-gradient(135deg,var(--accent),#6f8cff);
+      width:56px;
+      height:56px;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-weight:700;
+      font-size:18px;
+      box-shadow: 0 6px 20px rgba(15,98,254,0.15);
+    }
+
+    h1{
+      margin:0;
+      font-size:20px;
+      line-height:1.05;
+    }
+    p.lead{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:var(--shadow);
+    }
+
+    form{
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .row{
+      display:flex;
+      gap:12px;
+    }
+
+    label{
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+
+    input[type="text"], select, input[type="tel"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid #e6e9ef;
+      background:#fafbff;
+      font-size:14px;
+      outline:none;
+      transition: box-shadow .12s, border-color .12s;
+    }
+    input:focus, select:focus{
+      border-color:var(--accent);
+      box-shadow:0 6px 18px rgba(15,98,254,0.08);
+      background:#fff;
+    }
+
+    .two {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    button{
+      background:var(--accent);
+      color:white;
+      border:0;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow: 0 8px 24px rgba(15,98,254,0.12);
+      transition:transform .08s ease, box-shadow .08s ease, opacity .12s;
+    }
+    button:active{ transform:translateY(1px); }
+    button[disabled]{
+      opacity:.6;
+      cursor:not-allowed;
+      box-shadow:none;
+      transform:none;
+    }
+
+    .muted{
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .helper{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .toast{
+      position:fixed;
+      right:20px;
+      bottom:20px;
+      background:#0f172a;
+      color:white;
+      padding:12px 16px;
+      border-radius:10px;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.35);
+      display:none;
+      z-index:9999;
+      font-size:14px;
+    }
+
+    .toast.show{ display:block; animation:pop .22s ease; }
+    @keyframes pop{ from{transform:translateY(8px);opacity:0} to{transform:none;opacity:1} }
+
+    .meta {
+      font-size:12px;
+      color:var(--muted);
+      margin-top:8px;
+    }
+
+    .small{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    @media (max-width:880px){
+      .container{ grid-template-columns: 1fr; padding:0 6px; }
+    }
+  </style>
 </head>
 <body>
 
-<h3>EOD Upload</h3>
+  <div class="container" role="main">
+    <div class="brand" aria-hidden="false">
+      <div class="logo">
+        <div class="logo-ico">AD</div>
+        <div>
+          <h1>EOD Form — ADHAR Operator</h1>
+          <p class="lead">Daily operator EOD upload. Use a valid Operator ID and submit the day's report.</p>
+          <p class="meta">Quick, mobile-friendly form — replace the API endpoint inside the script before publishing.</p>
+        </div>
+      </div>
 
-<select id="eod">
-  <option>one day</option>  
-  <option>1–5</option>
-  <option>6–10</option>
-  <option>11–15</option>
-  <option>16–20</option>
-  <option>21–25</option>
-  <option>26–End</option>
-</select><br><br>
+      <div style="margin-top:10px;">
+        <strong class="small">Tips</strong>
+        <ul class="small" style="margin:8px 0 0 16px;padding:0 0 0 8px">
+          <li>Use an HTTPS endpoint and enable CORS on the server.</li>
+          <li>Operator ID is required to fetch registered details.</li>
+          <li>If mode is "Camp", the "Camp Name" field will appear.</li>
+        </ul>
+      </div>
+    </div>
 
-<input id="opid" placeholder="Operator ID" onblur="fetchData()" /><br><br>
+    <div class="card" aria-labelledby="form-title">
+      <h2 id="form-title" style="margin-top:0;margin-bottom:8px;font-size:16px">Submit EOD</h2>
 
-<input id="name" placeholder="Name" readonly />
-<input id="mode" placeholder="Mode" readonly />
-<input id="district" placeholder="District" readonly />
-<input id="address" placeholder="Address" readonly /><br><br>
+      <form id="eodForm" autocomplete="off" onsubmit="event.preventDefault(); submitEOD();">
+        <div>
+          <label for="opid">Operator ID</label>
+          <input id="opid" name="operator_id" type="text" inputmode="numeric" placeholder="Enter operator ID" required />
+          <div id="op-loading" class="helper" style="display:none;margin-top:6px">Looking up operator…</div>
+        </div>
 
-<input id="camp" placeholder="Camp Name" style="display:none;" /><br><br>
+        <div class="two">
+          <div>
+            <label for="name">Name</label>
+            <input id="name" type="text" placeholder="Name" readonly />
+          </div>
+          <div>
+            <label for="mode">Mode</label>
+            <input id="mode" type="text" placeholder="Mode" readonly />
+          </div>
+        </div>
 
-<button onclick="submitEOD()">Submit</button>
+        <div class="two">
+          <div>
+            <label for="district">District</label>
+            <input id="district" type="text" placeholder="District" readonly />
+          </div>
+          <div>
+            <label for="address">Address</label>
+            <input id="address" type="text" placeholder="Address" readonly />
+          </div>
+        </div>
+
+        <div>
+          <label for="eod">EOD Period</label>
+          <select id="eod" required>
+            <option value="">Select period</option>
+            <option> ONE DAY </option>
+            <option>1–5</option>
+            <option>6–10</option>
+            <option>11–15</option>
+            <option>16–20</option>
+            <option>21–25</option>
+            <option>26–End</option>
+          </select>
+        </div>
+
+        <div id="campWrap" style="display:none;">
+          <label for="camp">Camp Name</label>
+          <input id="camp" type="text" placeholder="Enter camp name if in Camp mode" />
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;margin-top:6px">
+          <button id="submitBtn" type="submit" disabled>Submit EOD</button>
+          <div id="statusText" class="helper" aria-live="polite"></div>
+        </div>
+
+        <div class="small" style="margin-top:8px">Note: Replace <strong>const API = "YOUR_API_URL"</strong> in the script with your real HTTPS API and ensure CORS is enabled.</div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbxnrG0uj3qmgKRm1982E3aoqas4WhqpkXI35Pk26JJRvjyNKSGIyR_Vg0tRmpXUY-4v/exec";
+/* Replace with your public API endpoint (HTTPS) */
+const API = "YOUR_API_URL";
+
+const qs = id => document.getElementById(id);
+const opid = qs('opid');
+const nameEl = qs('name');
+const modeEl = qs('mode');
+const districtEl = qs('district');
+const addressEl = qs('address');
+const campEl = qs('camp');
+const campWrap = qs('campWrap');
+const eod = qs('eod');
+const submitBtn = qs('submitBtn');
+const opLoading = qs('op-loading');
+const statusText = qs('statusText');
+const toast = qs('toast');
+
+let operatorFetched = false;
+
+function showToast(msg, isError=false){
+  toast.textContent = msg;
+  toast.style.background = isError ? 'var(--danger)' : '#0f172a';
+  toast.classList.add('show');
+  setTimeout(()=> toast.classList.remove('show'), 3500);
+}
+
+function setLoading(loading){
+  opLoading.style.display = loading ? 'block' : 'none';
+}
+
+function validateFormState(){
+  // enable submit when operator data exists and eod selected
+  submitBtn.disabled = !(operatorFetched && eod.value);
+  statusText.textContent = submitBtn.disabled ? '' : 'Ready to submit';
+}
+
+opid.addEventListener('blur', fetchData);
+eod.addEventListener('change', validateFormState);
 
 function fetchData(){
-  fetch(API + "?operator_id=" + opid.value)
-  .then(r => r.json())
-  .then(d => {
-    if(d.error){ alert("Invalid Operator ID"); return; }
-    name.value = d.name;
-    mode.value = d.mode;
-    district.value = d.district;
-    address.value = d.address;
-    camp.style.display = (d.mode === "Camp") ? "block" : "none";
-  });
+  const id = (opid.value || '').trim();
+  if(!id){ operatorFetched=false; clearFields(); validateFormState(); return; }
+  if(!API || API === "YOUR_API_URL"){ showToast("Replace API URL in the script before using.", true); return; }
+
+  setLoading(true);
+  operatorFetched = false;
+  fetch(API + "?operator_id=" + encodeURIComponent(id))
+    .then(r => {
+      setLoading(false);
+      if(!r.ok) throw new Error('Network response was not ok');
+      return r.json();
+    })
+    .then(d => {
+      if(d.error){ showToast("Operator not found", true); clearFields(); return; }
+      nameEl.value = d.name || '';
+      modeEl.value = d.mode || '';
+      districtEl.value = d.district || '';
+      addressEl.value = d.address || '';
+      if((d.mode || '').toLowerCase() === 'camp' || d.mode === 'Camp') {
+        campWrap.style.display = 'block';
+      } else {
+        campWrap.style.display = 'none';
+        campEl.value = '';
+      }
+      operatorFetched = true;
+      showToast("Operator loaded");
+      validateFormState();
+    })
+    .catch(err => {
+      setLoading(false);
+      console.error(err);
+      showToast("Failed to fetch operator data. Check API and CORS.", true);
+    });
 }
 
 function submitEOD(){
+  if(!operatorFetched){ showToast("Fetch an operator first", true); return; }
+  if(!eod.value){ showToast("Select EOD period", true); return; }
+  if(!API || API === "YOUR_API_URL"){ showToast("Replace API URL in the script before using.", true); return; }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+  statusText.textContent = '';
+
+  const payload = {
+    eod_period: eod.value,
+    operator_id: opid.value.trim(),
+    name: nameEl.value,
+    mode: modeEl.value,
+    district: districtEl.value,
+    address: addressEl.value,
+    camp_name: (campEl.value || '').trim()
+  };
+
   fetch(API, {
-    method:"POST",
-    body:JSON.stringify({
-      eod_period:eod.value,
-      operator_id:opid.value,
-      name:name.value,
-      mode:mode.value,
-      district:district.value,
-      address:address.value,
-      camp_name:camp.value
-    })
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   })
-  .then(r=>r.text())
-  .then(msg=>alert(msg));
+  .then(r => {
+    if(!r.ok) return r.text().then(t => Promise.reject(t || r.statusText));
+    return r.text();
+  })
+  .then(msg => {
+    showToast(msg || "Submitted successfully");
+    // keep fields, but reset eod
+    eod.value = '';
+    validateFormState();
+  })
+  .catch(err => {
+    console.error(err);
+    showToast("Failed to submit. Check API, network and CORS.", true);
+  })
+  .finally(()=>{
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submit EOD';
+  });
+}
+
+function clearFields(){
+  nameEl.value = '';
+  modeEl.value = '';
+  districtEl.value = '';
+  addressEl.value = '';
+  campEl.value = '';
+  campWrap.style.display = 'none';
 }
 </script>
 
